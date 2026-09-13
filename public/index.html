@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#0b0c0e" />
+  <meta name="description" content="LevelUp Life — мотиваційний щоденник і гра на життя." />
+  <title>LevelUp Life</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"><i></i><i></i></div>
+  <section class="auth-shell" id="authScreen">
+    <div class="auth-brand"><span class="brand-mark">L</span><span>LEVELUP</span></div>
+    <div class="auth-copy">
+      <span class="eyebrow"><i></i> Твоя гра. Твої правила.</span>
+      <h1>Життя, у якому<br><em>видно прогрес.</em></h1>
+      <p>Перетвори щоденні дії на силу, зірки та винагороди, яких справді хочеться.</p>
+    </div>
+    <div class="auth-card glass">
+      <div class="auth-tabs"><button class="active" data-auth-tab="login">Увійти</button><button data-auth-tab="register">Створити акаунт</button></div>
+      <form id="authForm">
+        <label class="field register-only hidden"><span>Ім’я</span><input name="name" autocomplete="name" placeholder="Як до тебе звертатися?" /></label>
+        <label class="field"><span>Логін</span><input name="username" autocomplete="username" required placeholder="Твій логін" /></label>
+        <label class="field"><span>Пароль</span><input name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="Мінімум 8 символів" /></label>
+        <p class="form-error" id="authError"></p>
+        <button class="primary wide" type="submit"><span id="authSubmitText">Продовжити</span><b>→</b></button>
+      </form>
+      <button class="telegram-login hidden" id="telegramLogin"><span>➤</span> Увійти через Telegram</button>
+    </div>
+    <p class="auth-foot">Маленькі кроки. Велика версія тебе.</p>
+  </section>
+
+  <div class="app hidden" id="app">
+    <aside class="sidebar">
+      <div class="logo"><span class="brand-mark">L</span><span>LEVELUP</span></div>
+      <nav id="desktopNav">
+        <button class="nav-btn active" data-view="home"><span>⌂</span>Сьогодні</button>
+        <button class="nav-btn" data-view="tasks"><span>✓</span>Завдання</button>
+        <button class="nav-btn" data-view="income"><span>↗</span>Заробіток</button>
+        <button class="nav-btn" data-view="shop"><span>◇</span>Нагороди</button>
+        <button class="nav-btn" data-view="stats"><span>◔</span>Прогрес</button>
+      </nav>
+      <div class="side-quote"><span>“</span><p id="sideQuote"></p></div>
+      <button class="profile" id="logoutBtn"><span class="avatar" id="avatar">Д</span><span><b id="profileName">Данило</b><small>Вийти з акаунта</small></span><i>•••</i></button>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div><p id="dayLabel">Твій день</p><h2 id="greeting">Вітаю!</h2></div>
+        <div class="balances"><span class="balance star"><i>★</i><b id="starBalance">0</b></span><span class="balance cash"><i>₴</i><b id="moneyBalance">0</b></span><button class="icon-btn" data-open="taskModal" aria-label="Додати завдання">＋</button></div>
+      </header>
+
+      <section class="view active" id="view-home">
+        <article class="hero-card">
+          <div class="hero-orb" id="heroProgress"><svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="50"/><circle class="progress" cx="60" cy="60" r="50"/></svg><span><b id="todayPercent">0%</b><small>виконано</small></span></div>
+          <div class="hero-text"><span class="pill">ДЕННИЙ КВЕСТ</span><h1>Зроби сьогодні<br>трохи <em>більше.</em></h1><p id="heroSummary">Завантажуємо твій план…</p><button class="soft-btn" data-open="taskModal">＋ Додати квест</button></div>
+          <div class="streak"><span>СЕРІЯ</span><b><i>◆</i> <strong id="streakCount">0</strong></b><small>днів поспіль</small></div>
+        </article>
+        <div class="home-grid">
+          <article class="panel today-panel"><div class="panel-head"><div><span class="kicker">ПЛАН НА СЬОГОДНІ</span><h3>Головні квести</h3></div><button data-view-jump="tasks">Усі →</button></div><div class="task-list" id="todayTasks"></div></article>
+          <div class="right-stack">
+            <article class="quote-card"><span class="quote-mark">“</span><p id="dailyQuote">Твоя цитата дня</p><small id="quoteAuthor">—</small></article>
+            <article class="panel mini-stats"><div><span class="kicker">ЦЕЙ ТИЖДЕНЬ</span><h3>Ритм прогресу</h3></div><div class="spark-bars" id="miniBars"></div><footer><span><b id="weekDone">0</b> виконано</span><span class="up" id="weekChange">↑ 0%</span></footer></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-tasks">
+        <div class="section-head"><div><span class="kicker">ТВОЯ СИСТЕМА</span><h1>Щоденні завдання</h1><p>Плануй звечора, щоб прокидатися вже з чітким маршрутом.</p></div><button class="primary" data-open="taskModal">＋ Нове завдання</button></div>
+        <div class="date-strip" id="dateStrip"></div>
+        <div class="filter-row"><div class="segmented"><button class="active" data-filter="all">Усі</button><button data-filter="open">Активні</button><button data-filter="done">Виконані</button></div><span id="taskCounter">0 завдань</span></div>
+        <div class="task-board" id="taskBoard"></div>
+      </section>
+
+      <section class="view" id="view-income">
+        <div class="section-head"><div><span class="kicker">ФІНАНСОВИЙ ТРЕКЕР</span><h1>Твій заробіток</h1><p>Фіксуй кожен результат — цифри люблять увагу.</p></div><button class="primary" data-open="incomeModal">＋ Додати дохід</button></div>
+        <div class="money-grid"><article class="money-hero"><span>ДОХІД ЦЬОГО МІСЯЦЯ</span><h2 id="monthIncome">₴0</h2><p>Кожна гривня — доказ твоєї цінності.</p><div class="money-wave" id="moneyWave"></div></article><article class="savings-card"><div class="coin-icon">₴</div><span>У СКАРБНИЧЦІ</span><h2 id="savingsTotal">₴0</h2><button class="soft-btn" data-open="savingsModal">Змінити баланс</button></article></div>
+        <article class="panel ledger"><div class="panel-head"><div><span class="kicker">ІСТОРІЯ</span><h3>Останні надходження</h3></div></div><div id="incomeList"></div></article>
+      </section>
+
+      <section class="view" id="view-shop">
+        <div class="section-head"><div><span class="kicker">ВИНАГОРОДА ЗА РУХ</span><h1>Магазин бажань</h1><p>Твої зірки мають цінність. Обмінюй дисципліну на радість.</p></div><button class="primary" data-open="rewardModal">＋ Додати бажання</button></div>
+        <div class="shop-balance"><div><span>ДОСТУПНО ДЛЯ ПОКУПОК</span><h2><i>★</i> <b id="shopStars">0</b></h2></div><div class="divider"></div><div><span>СКАРБНИЧКА</span><h2 class="mint">₴<b id="shopMoney">0</b></h2></div><p>Обери те, що надихатиме тебе рухатися далі.</p></div>
+        <div class="reward-grid" id="rewardGrid"></div>
+      </section>
+
+      <section class="view" id="view-stats">
+        <div class="section-head"><div><span class="kicker">ТВОЯ ДИНАМІКА</span><h1>Прогрес і статистика</h1><p>Те, що вимірюється, стає сильнішим.</p></div></div>
+        <div class="stats-grid">
+          <article class="panel productivity"><span class="kicker">ПРОДУКТИВНІСТЬ ТИЖНЯ</span><div class="big-ring"><svg viewBox="0 0 180 180"><circle class="track" cx="90" cy="90" r="72"/><circle class="progress" id="statRing" cx="90" cy="90" r="72"/></svg><span><b id="statPercent">0%</b><small>твій результат</small></span></div><p id="statMessage">Почни з одного маленького кроку.</p></article>
+          <article class="panel weekly-chart"><div class="panel-head"><div><span class="kicker">7 ДНІВ</span><h3>Виконання квестів</h3></div></div><div class="chart" id="weeklyChart"></div></article>
+          <article class="panel metric"><span class="metric-icon">◆</span><small>ПОТОЧНА СЕРІЯ</small><b><strong id="statStreak">0</strong> днів</b><p>Не розривай ланцюг</p></article>
+          <article class="panel metric"><span class="metric-icon gold">★</span><small>ЗАРОБЛЕНО ЗІРОК</small><b><strong id="earnedStars">0</strong></b><p>За весь час</p></article>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav"><button class="active" data-view="home"><span>⌂</span><small>День</small></button><button data-view="tasks"><span>✓</span><small>Квести</small></button><button class="nav-add" data-open="taskModal">＋</button><button data-view="income"><span>↗</span><small>Дохід</small></button><button data-view="shop"><span>◇</span><small>Магазин</small></button></nav>
+  </div>
+
+  <div class="modal-backdrop hidden" id="modalBackdrop"></div>
+  <dialog class="modal" id="taskModal"><button class="modal-close" data-close>×</button><span class="kicker">НОВИЙ КВЕСТ</span><h2>Що зробить тебе сильнішим?</h2><form id="taskForm"><div class="emoji-picker" id="taskEmoji"></div><input type="hidden" name="emoji" value="☺"><label class="field"><span>Назва завдання</span><input name="title" required placeholder="Наприклад, 60 хвилин навчання" /></label><div class="two-fields"><label class="field"><span>Дата</span><input name="date" type="date" required /></label><label class="field"><span>Нагорода</span><div class="input-icon"><i>★</i><input name="stars" type="number" min="1" max="999" value="10" required /></div></label></div><label class="field"><span>Сфера життя</span><select name="category"><option value="growth">Розвиток</option><option value="health">Здоров’я</option><option value="work">Робота</option><option value="balance">Баланс</option></select></label><button class="primary wide">Створити квест <b>→</b></button></form></dialog>
+  <dialog class="modal" id="incomeModal"><button class="modal-close" data-close>×</button><span class="kicker">НОВЕ НАДХОДЖЕННЯ</span><h2>Зафіксуй свій результат</h2><form id="incomeForm"><label class="field"><span>Сума</span><div class="input-icon mint"><i>₴</i><input name="amount" type="number" min="1" required placeholder="5000" /></div></label><label class="field"><span>Звідки надійшли гроші</span><input name="source" required placeholder="Проєкт, клієнт або робота" /></label><label class="field"><span>Коментар</span><input name="note" placeholder="Необов’язково" /></label><div class="two-fields"><label class="field"><span>Дата</span><input name="date" type="date" required /></label><label class="field"><span>У скарбничку</span><input name="toSavings" type="number" min="0" value="0" /></label></div><button class="primary wide">Додати дохід <b>→</b></button></form></dialog>
+  <dialog class="modal" id="rewardModal"><button class="modal-close" data-close>×</button><span class="kicker">НОВЕ БАЖАННЯ</span><h2>Що стане твоєю нагородою?</h2><form id="rewardForm"><div class="emoji-picker" id="rewardEmoji"></div><input type="hidden" name="emoji" value="✦"><label class="field"><span>Назва бажання</span><input name="title" required placeholder="Наприклад, нові навушники" /></label><div class="two-fields"><label class="field"><span>Ціна в зірках</span><div class="input-icon"><i>★</i><input name="price" type="number" min="1" value="100" required /></div></label><label class="field"><span>Грошей потрібно</span><div class="input-icon mint"><i>₴</i><input name="money" type="number" min="0" value="0" /></div></label></div><button class="primary wide">Додати бажання <b>→</b></button></form></dialog>
+  <dialog class="modal compact" id="savingsModal"><button class="modal-close" data-close>×</button><span class="kicker">СКАРБНИЧКА</span><h2>Змінити баланс</h2><form id="savingsForm"><label class="field"><span>Сума (мінус — якщо витратив)</span><div class="input-icon mint"><i>₴</i><input name="amount" type="number" required placeholder="1000 або -500" /></div></label><button class="primary wide">Зберегти <b>→</b></button></form></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"><span>✓</span><p></p></div>
+  <div class="celebration" id="celebration" aria-hidden="true"></div>
+</body>
+</html>
