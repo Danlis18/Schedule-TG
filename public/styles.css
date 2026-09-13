@@ -13,3 +13,35 @@
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 dialog.modal::backdrop{background:transparent}
 @media(max-width:720px){.section-head .primary::before{content:"＋";font-size:22px}.section-head .primary{display:grid;place-items:center}}
+
+/* Mobile polish: tap safety, denser hero and premium controls */
+.hero-orb{pointer-events:none}
+.hero-text,.streak{position:relative;z-index:2}
+.nav-icon{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.emoji-picker{gap:10px;padding:4px 2px 12px;scrollbar-width:none;scroll-snap-type:x proximity}
+.emoji-picker::-webkit-scrollbar{display:none}
+.emoji-picker button{flex-basis:48px;height:48px;border-radius:15px;font-size:23px;background:linear-gradient(145deg,#202227,#111214);box-shadow:0 6px 16px #0004;scroll-snap-align:start;transition:transform .18s ease,border-color .18s ease,background .18s ease}
+.emoji-picker button:hover{transform:translateY(-2px)}
+.emoji-picker button.active{border-color:#f1c96acc;background:linear-gradient(145deg,#493f24,#211d14);box-shadow:0 0 0 3px #f1c96a12,0 8px 20px #0005}
+
+@media(max-width:720px){
+  .balance.cash{display:flex!important}
+  .topbar>div:first-child{min-width:0}.topbar h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:185px}
+  .hero-card{min-height:276px;padding:22px 20px}
+  .hero-orb{width:126px;height:126px;right:4px;bottom:7px;opacity:.88}
+  .hero-orb b{font-size:34px}.hero-orb small{font-size:9px}
+  .hero-text h1{font-size:34px;max-width:260px;margin:16px 0 8px}
+  .hero-text p{max-width:205px;margin:0 0 14px;line-height:1.45}
+  .soft-btn{position:relative;z-index:3}
+  .home-grid{margin-top:14px}
+  .quote-card{min-height:122px;padding:17px 20px}
+  .quote-mark{font-size:30px}.quote-card p{font-size:14px;line-height:1.32;margin:7px 0 9px;max-width:88%}.quote-card small{font-size:8px}
+  .quote-card:after{width:130px;height:130px;right:-55px;bottom:-75px}
+  .bottom-nav button{cursor:pointer}.bottom-nav .nav-icon{display:block}
+}
+
+@media(max-width:410px){
+  .topbar h2{max-width:145px}.balance{padding:0 8px}.balances{gap:5px}
+  .hero-card{min-height:264px}.hero-text h1{font-size:31px;max-width:235px}.hero-orb{width:116px;height:116px}
+  .quote-card{min-height:116px}
+}

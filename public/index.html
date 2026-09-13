@@ -4,9 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#0b0c0e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="LevelUp Life" />
   <meta name="description" content="LevelUp Life — мотиваційний щоденник і гра на життя." />
   <title>LevelUp Life</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/styles.css" />
   <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
   <script src="/app.js" defer></script>
@@ -51,7 +56,7 @@
     <main>
       <header class="topbar">
         <div><p id="dayLabel">Твій день</p><h2 id="greeting">Вітаю!</h2></div>
-        <div class="balances"><span class="balance star"><i>★</i><b id="starBalance">0</b></span><span class="balance cash"><i>₴</i><b id="moneyBalance">0</b></span><button class="icon-btn" data-open="taskModal" aria-label="Додати завдання">＋</button></div>
+        <div class="balances"><span class="balance star"><i>★</i><b id="starBalance">0</b></span><span class="balance cash"><i>$</i><b id="moneyBalance">0</b></span></div>
       </header>
 
       <section class="view active" id="view-home">
@@ -78,13 +83,13 @@
 
       <section class="view" id="view-income">
         <div class="section-head"><div><span class="kicker">ФІНАНСОВИЙ ТРЕКЕР</span><h1>Твій заробіток</h1><p>Фіксуй кожен результат — цифри люблять увагу.</p></div><button class="primary" data-open="incomeModal">＋ Додати дохід</button></div>
-        <div class="money-grid"><article class="money-hero"><span>ДОХІД ЦЬОГО МІСЯЦЯ</span><h2 id="monthIncome">₴0</h2><p>Кожна гривня — доказ твоєї цінності.</p><div class="money-wave" id="moneyWave"></div></article><article class="savings-card"><div class="coin-icon">₴</div><span>У СКАРБНИЧЦІ</span><h2 id="savingsTotal">₴0</h2><button class="soft-btn" data-open="savingsModal">Змінити баланс</button></article></div>
+        <div class="money-grid"><article class="money-hero"><span>ДОХІД ЦЬОГО МІСЯЦЯ</span><h2 id="monthIncome">$0</h2><p>Кожен долар — доказ твоєї цінності.</p><div class="money-wave" id="moneyWave"></div></article><article class="savings-card"><div class="coin-icon">$</div><span>У СКАРБНИЧЦІ</span><h2 id="savingsTotal">$0</h2><button class="soft-btn" data-open="savingsModal">Змінити баланс</button></article></div>
         <article class="panel ledger"><div class="panel-head"><div><span class="kicker">ІСТОРІЯ</span><h3>Останні надходження</h3></div></div><div id="incomeList"></div></article>
       </section>
 
       <section class="view" id="view-shop">
         <div class="section-head"><div><span class="kicker">ВИНАГОРОДА ЗА РУХ</span><h1>Магазин бажань</h1><p>Твої зірки мають цінність. Обмінюй дисципліну на радість.</p></div><button class="primary" data-open="rewardModal">＋ Додати бажання</button></div>
-        <div class="shop-balance"><div><span>ДОСТУПНО ДЛЯ ПОКУПОК</span><h2><i>★</i> <b id="shopStars">0</b></h2></div><div class="divider"></div><div><span>СКАРБНИЧКА</span><h2 class="mint">₴<b id="shopMoney">0</b></h2></div><p>Обери те, що надихатиме тебе рухатися далі.</p></div>
+        <div class="shop-balance"><div><span>ДОСТУПНО ДЛЯ ПОКУПОК</span><h2><i>★</i> <b id="shopStars">0</b></h2></div><div class="divider"></div><div><span>СКАРБНИЧКА</span><h2 class="mint">$<b id="shopMoney">0</b></h2></div><p>Обери те, що надихатиме тебе рухатися далі.</p></div>
         <div class="reward-grid" id="rewardGrid"></div>
       </section>
 
@@ -99,14 +104,14 @@
       </section>
     </main>
 
-    <nav class="bottom-nav"><button class="active" data-view="home"><span>⌂</span><small>День</small></button><button data-view="tasks"><span>✓</span><small>Квести</small></button><button class="nav-add" data-open="taskModal">＋</button><button data-view="income"><span>↗</span><small>Дохід</small></button><button data-view="shop"><span>◇</span><small>Магазин</small></button></nav>
+    <nav class="bottom-nav"><button class="active" data-view="home"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg><small>День</small></button><button data-view="tasks"><svg class="nav-icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg><small>Квести</small></button><button class="nav-add" data-open="taskModal" aria-label="Додати квест">＋</button><button data-view="income"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 17 17 5m-7 0h7v7"/></svg><small>Дохід</small></button><button data-view="shop"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M4 9h16l-1 11H5L4 9Zm4 0a4 4 0 0 1 8 0"/></svg><small>Магазин</small></button></nav>
   </div>
 
   <div class="modal-backdrop hidden" id="modalBackdrop"></div>
-  <dialog class="modal" id="taskModal"><button class="modal-close" data-close>×</button><span class="kicker">НОВИЙ КВЕСТ</span><h2>Що зробить тебе сильнішим?</h2><form id="taskForm"><div class="emoji-picker" id="taskEmoji"></div><input type="hidden" name="emoji" value="☺"><label class="field"><span>Назва завдання</span><input name="title" required placeholder="Наприклад, 60 хвилин навчання" /></label><div class="two-fields"><label class="field"><span>Дата</span><input name="date" type="date" required /></label><label class="field"><span>Нагорода</span><div class="input-icon"><i>★</i><input name="stars" type="number" min="1" max="999" value="10" required /></div></label></div><label class="field"><span>Сфера життя</span><select name="category"><option value="growth">Розвиток</option><option value="health">Здоров’я</option><option value="work">Робота</option><option value="balance">Баланс</option></select></label><button class="primary wide">Створити квест <b>→</b></button></form></dialog>
-  <dialog class="modal" id="incomeModal"><button class="modal-close" data-close>×</button><span class="kicker">НОВЕ НАДХОДЖЕННЯ</span><h2>Зафіксуй свій результат</h2><form id="incomeForm"><label class="field"><span>Сума</span><div class="input-icon mint"><i>₴</i><input name="amount" type="number" min="1" required placeholder="5000" /></div></label><label class="field"><span>Звідки надійшли гроші</span><input name="source" required placeholder="Проєкт, клієнт або робота" /></label><label class="field"><span>Коментар</span><input name="note" placeholder="Необов’язково" /></label><div class="two-fields"><label class="field"><span>Дата</span><input name="date" type="date" required /></label><label class="field"><span>У скарбничку</span><input name="toSavings" type="number" min="0" value="0" /></label></div><button class="primary wide">Додати дохід <b>→</b></button></form></dialog>
-  <dialog class="modal" id="rewardModal"><button class="modal-close" data-close>×</button><span class="kicker">НОВЕ БАЖАННЯ</span><h2>Що стане твоєю нагородою?</h2><form id="rewardForm"><div class="emoji-picker" id="rewardEmoji"></div><input type="hidden" name="emoji" value="✦"><label class="field"><span>Назва бажання</span><input name="title" required placeholder="Наприклад, нові навушники" /></label><div class="two-fields"><label class="field"><span>Ціна в зірках</span><div class="input-icon"><i>★</i><input name="price" type="number" min="1" value="100" required /></div></label><label class="field"><span>Грошей потрібно</span><div class="input-icon mint"><i>₴</i><input name="money" type="number" min="0" value="0" /></div></label></div><button class="primary wide">Додати бажання <b>→</b></button></form></dialog>
-  <dialog class="modal compact" id="savingsModal"><button class="modal-close" data-close>×</button><span class="kicker">СКАРБНИЧКА</span><h2>Змінити баланс</h2><form id="savingsForm"><label class="field"><span>Сума (мінус — якщо витратив)</span><div class="input-icon mint"><i>₴</i><input name="amount" type="number" required placeholder="1000 або -500" /></div></label><button class="primary wide">Зберегти <b>→</b></button></form></dialog>
+  <dialog class="modal" id="taskModal"><button class="modal-close" data-close>×</button><span class="kicker">НОВИЙ КВЕСТ</span><h2>Що зробить тебе сильнішим?</h2><form id="taskForm"><div class="emoji-picker" id="taskEmoji"></div><input type="hidden" name="emoji" value="🎯"><label class="field"><span>Назва завдання</span><input name="title" required placeholder="Наприклад, 60 хвилин навчання" /></label><div class="two-fields"><label class="field"><span>Дата</span><input name="date" type="date" required /></label><label class="field"><span>Нагорода</span><div class="input-icon"><i>★</i><input name="stars" type="number" min="1" max="999" value="10" required /></div></label></div><label class="field"><span>Сфера життя</span><select name="category"><option value="growth">Розвиток</option><option value="health">Здоров’я</option><option value="work">Робота</option><option value="balance">Баланс</option></select></label><button class="primary wide">Створити квест <b>→</b></button></form></dialog>
+  <dialog class="modal" id="incomeModal"><button class="modal-close" data-close>×</button><span class="kicker">НОВЕ НАДХОДЖЕННЯ</span><h2>Зафіксуй свій результат</h2><form id="incomeForm"><label class="field"><span>Сума в доларах</span><div class="input-icon mint"><i>$</i><input name="amount" type="number" min="1" required placeholder="1000" /></div></label><label class="field"><span>Звідки надійшли гроші</span><input name="source" required placeholder="Проєкт, клієнт або робота" /></label><label class="field"><span>Коментар</span><input name="note" placeholder="Необов’язково" /></label><div class="two-fields"><label class="field"><span>Дата</span><input name="date" type="date" required /></label><label class="field"><span>У скарбничку</span><input name="toSavings" type="number" min="0" value="0" /></label></div><button class="primary wide">Додати дохід <b>→</b></button></form></dialog>
+  <dialog class="modal" id="rewardModal"><button class="modal-close" data-close>×</button><span class="kicker">НОВЕ БАЖАННЯ</span><h2>Що стане твоєю нагородою?</h2><form id="rewardForm"><div class="emoji-picker" id="rewardEmoji"></div><input type="hidden" name="emoji" value="🏆"><label class="field"><span>Назва бажання</span><input name="title" required placeholder="Наприклад, нові навушники" /></label><div class="two-fields"><label class="field"><span>Ціна в зірках</span><div class="input-icon"><i>★</i><input name="price" type="number" min="1" value="100" required /></div></label><label class="field"><span>Грошей потрібно</span><div class="input-icon mint"><i>$</i><input name="money" type="number" min="0" value="0" /></div></label></div><button class="primary wide">Додати бажання <b>→</b></button></form></dialog>
+  <dialog class="modal compact" id="savingsModal"><button class="modal-close" data-close>×</button><span class="kicker">СКАРБНИЧКА</span><h2>Змінити баланс</h2><form id="savingsForm"><label class="field"><span>Сума в доларах (мінус — якщо витратив)</span><div class="input-icon mint"><i>$</i><input name="amount" type="number" required placeholder="1000 або -500" /></div></label><button class="primary wide">Зберегти <b>→</b></button></form></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"><span>✓</span><p></p></div>
   <div class="celebration" id="celebration" aria-hidden="true"></div>
 </body>

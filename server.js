@@ -104,7 +104,7 @@ async function telegramWebhook(req, res) {
     await telegram('sendMessage', {
       chat_id: message.chat.id,
       text: `Привіт, ${clean(message.from?.first_name, 40) || 'гравцю'}! ✦\n\nLevelUp Life перетворює твої щоденні справи на квести, зірки, прогрес і реальні нагороди. Натискай кнопку та починай свій день.`,
-      reply_markup: { inline_keyboard: [[{ text: '🚀 Відкрити LevelUp Life', web_app: { url: APP_URL } }]] }
+      reply_markup: { inline_keyboard: [[{ text: 'OPEN', web_app: { url: APP_URL } }]] }
     });
   }
   return json(res, 200, { ok: true });
@@ -114,7 +114,7 @@ async function configureTelegram() {
   const webhookUrl = `${APP_URL.replace(/\/$/, '')}/api/telegram/webhook`;
   await telegram('setWebhook', { url: webhookUrl, secret_token: WEBHOOK_SECRET, allowed_updates: ['message'] });
   await telegram('setMyCommands', { commands: [{ command: 'start', description: 'Відкрити LevelUp Life' }] });
-  await telegram('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Відкрити LevelUp', web_app: { url: APP_URL } } });
+  await telegram('setChatMenuButton', { menu_button: { type: 'web_app', text: 'OPEN', web_app: { url: APP_URL } } });
   console.log(`Telegram webhook configured: ${webhookUrl}`);
 }
 
