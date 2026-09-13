@@ -6,14 +6,14 @@ const months = ['січня','лютого','березня','квітня','т�
 const categories = { growth:'Розвиток', health:'Здоров’я', work:'Робота', balance:'Баланс' };
 function isoDate(d=new Date()){return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}
 function money(n){return new Intl.NumberFormat('uk-UA',{maximumFractionDigits:0}).format(n||0)}
-async function request(path, options={}){const res=await fetch(path,{...options,headers:{'content-type':'application/json',...(state.token?{authorization:`Bearer ${state.token}`}:{}) ,...(options.headers||{})}});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'Сталася помилка');return data}
+async function request(path, options={}){const res=await fetch(path,{cache:'no-store',...options,headers:{'content-type':'application/json',...(state.token?{authorization:`Bearer ${state.token}`}:{}) ,...(options.headers||{})}});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'Сталася помилка');return data}
 function toast(message, ok=true){const el=$('#toast');$('span',el).textContent=ok?'✓':'!';$('p',el).textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2800)}
 function celebrate(){const box=$('#celebration');for(let i=0;i<24;i++){const p=document.createElement('i');p.className='confetti';p.textContent=['★','✦','•'][i%3];p.style.left=`${Math.random()*100}%`;p.style.setProperty('--drift',`${(Math.random()-.5)*180}px`);p.style.animationDelay=`${Math.random()*.35}s`;p.style.fontSize=`${8+Math.random()*12}px`;box.append(p);setTimeout(()=>p.remove(),2400)}}
 function setToken(token){state.token=token;localStorage.setItem('levelup_token',token)}
 
 async function init(){
   window.Telegram?.WebApp?.ready?.(); window.Telegram?.WebApp?.expand?.();
-  setupAuth(); setupNavigation(); setupModals(); setupForms(); setupEmoji();
+  setupAuth(); setupNavigation(); setupModals(); setupForms(); setupEmoji(); setupRewardImage();
   const tg=window.Telegram?.WebApp; if(tg?.initData){$('#telegramLogin').classList.remove('hidden');$('#telegramLogin').onclick=()=>telegramAuth(tg.initData).catch(error=>toast(error.message,false))}
   registerWebMCP();
   if(state.token){try{await load();return}catch{localStorage.removeItem('levelup_token');state.token=''}}
@@ -36,7 +36,7 @@ function setupAuth(){
   $('#logoutBtn').onclick=()=>{localStorage.removeItem('levelup_token');state.token='';state.data=null;showAuth()};
 }
 async function telegramAuth(initData){const result=await request('/api/auth/telegram',{method:'POST',body:JSON.stringify({initData})});setToken(result.token);await load();return result}
-async function load(){state.data=await request('/api/bootstrap');showApp();render()}
+async function load(){state.data=await request(`/api/bootstrap?fresh=${Date.now()}`);showApp();render()}
 
 function setupNavigation(){
   $$('[data-view]').forEach(btn=>btn.onclick=()=>switchView(btn.dataset.view));
@@ -51,6 +51,12 @@ function setupModals(){
 function openModal(id){const modal=$(`#${id}`);if(!modal)return;const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);const dateInput=$('input[name="date"]',modal);if(dateInput)dateInput.value=id==='taskModal'?isoDate(tomorrow):isoDate();$('#modalBackdrop').classList.remove('hidden');modal.showModal()}
 function closeModals(){$$('dialog[open]').forEach(d=>d.close());$('#modalBackdrop').classList.add('hidden')}
 function setupEmoji(){const items=['🎯','🧠','📚','💪','🏃','💧','💼','💻','🧘','🎨','🚀','🏆','⭐','❤️'];[['#taskEmoji','🎯'],['#rewardEmoji','🏆']].forEach(([selector,initial])=>{const box=$(selector);items.forEach(icon=>{const b=document.createElement('button');b.type='button';b.textContent=icon;b.setAttribute('aria-label',`Обрати ${icon}`);b.classList.toggle('active',icon===initial);b.onclick=()=>{$$('button',box).forEach(x=>x.classList.remove('active'));b.classList.add('active');box.nextElementSibling.value=icon};box.append(b)})})}
+function setupRewardImage(){
+  const input=$('#rewardImageFile'),hidden=$('#rewardImageData'),preview=$('#rewardImagePreview');
+  if(!input)return;
+  input.onchange=async()=>{const file=input.files?.[0];if(!file){hidden.value='';preview.innerHTML='';return}if(!file.type.startsWith('image/')){input.value='';return toast('Оберіть файл зображення',false)}try{const data=await compressImage(file);hidden.value=data;preview.innerHTML=`<img src="${data}" alt="Попередній перегляд"><button type="button" aria-label="Видалити фото">×</button>`;$('button',preview).onclick=()=>{input.value='';hidden.value='';preview.innerHTML=''}}catch{input.value='';toast('Не вдалося обробити фото',false)}};
+}
+function compressImage(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=reject;reader.onload=()=>{const img=new Image();img.onerror=reject;img.onload=()=>{const max=900,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#171719';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.82))};img.src=reader.result};reader.readAsDataURL(file)})}
 function setupForms(){
   $('#taskForm').onsubmit=e=>submitForm(e,'/api/tasks','Квест додано до плану');
   $('#incomeForm').onsubmit=e=>submitForm(e,'/api/incomes','Дохід зафіксовано');
@@ -58,7 +64,7 @@ function setupForms(){
   $('#savingsForm').onsubmit=e=>submitForm(e,'/api/savings','Баланс скарбнички оновлено');
   $$('.segmented button').forEach(btn=>btn.onclick=()=>{state.filter=btn.dataset.filter;$$('.segmented button').forEach(x=>x.classList.toggle('active',x===btn));renderTaskBoard()});
 }
-async function submitForm(e,path,message){e.preventDefault();const form=e.currentTarget;const payload=Object.fromEntries(new FormData(form));$$('button',form).forEach(b=>b.disabled=true);try{await request(path,{method:'POST',body:JSON.stringify(payload)});closeModals();form.reset();await load();toast(message)}catch(err){toast(err.message,false)}finally{$$('button',form).forEach(b=>b.disabled=false)}}
+async function submitForm(e,path,message){e.preventDefault();const form=e.currentTarget;const payload=Object.fromEntries(new FormData(form));$$('button',form).forEach(b=>b.disabled=true);try{await request(path,{method:'POST',body:JSON.stringify(payload)});closeModals();form.reset();if(form.id==='rewardForm')$('#rewardImagePreview').innerHTML='';await load();toast(message)}catch(err){toast(err.message,false)}finally{$$('button',form).forEach(b=>b.disabled=false)}}
 
 function render(){const {user,dashboard}=state.data;$('#profileName').textContent=user.name;$('#avatar').textContent=(user.name||'Г')[0].toUpperCase();$('#greeting').textContent=`Вітаю, ${(user.name||'Гравець').split(' ')[0]}!`;const d=new Date();$('#dayLabel').textContent=`${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;updateBalances();renderDashboard();renderDates();renderTaskBoard();renderIncome();renderShop();renderStats();$('#sideQuote').textContent=dashboard.quote[0]}
 function updateBalances(){const u=state.data.user;$('#starBalance').textContent=money(u.stars);$('#moneyBalance').textContent=money(u.savedMoney);$('#shopStars').textContent=money(u.stars);$('#shopMoney').textContent=money(u.savedMoney);$('#savingsTotal').textContent=`$${money(u.savedMoney)}`}
@@ -70,12 +76,12 @@ function renderTaskBoard(){if(!state.data)return;let tasks=state.data.tasks.filt
 async function toggleTask(id,wasOpen){try{const result=await request(`/api/tasks/${id}/toggle`,{method:'PATCH'});await load();if(wasOpen){celebrate();toast(`+${result.task.stars} зірок. Чудовий рух!`)}}catch(err){toast(err.message,false)}}
 async function deleteTask(id){if(!confirm('Видалити це завдання?'))return;try{await request(`/api/tasks/${id}`,{method:'DELETE'});await load();toast('Завдання видалено')}catch(err){toast(err.message,false)}}
 function renderIncome(){const d=state.data;$('#monthIncome').textContent=`$${money(d.dashboard.monthIncome)}`;const wave=$('#moneyWave');wave.innerHTML='';[28,44,35,63,52,82,70,100].forEach(h=>{const i=document.createElement('i');i.style.height=`${h}%`;wave.append(i)});const list=$('#incomeList');list.innerHTML='';d.incomes.slice(0,10).forEach(x=>{const row=document.createElement('div');row.className='ledger-row';row.innerHTML=`<span class="ledger-icon">↗</span><div><b>${escapeHTML(x.source)}</b><small>${formatDate(x.date)}${x.note?` · ${escapeHTML(x.note)}`:''}</small></div><b class="ledger-amount">+ $${money(x.amount)}</b>`;list.append(row)});if(!d.incomes.length)list.innerHTML='<div class="empty"><b>Надходжень ще немає</b>Перший запис створить твою фінансову історію.</div>'}
-function renderShop(){const box=$('#rewardGrid');box.innerHTML='';const u=state.data.user;state.data.rewards.forEach(r=>{const can=u.stars>=r.price&&u.savedMoney>=r.money;const card=document.createElement('article');card.className='reward-card';card.innerHTML=`<span class="reward-emoji">${escapeHTML(r.emoji)}</span><h3>${escapeHTML(r.title)}</h3><div class="reward-price"><span class="gold">★ ${money(r.price)}</span>${r.money?`<span>+</span><span class="mint">$${money(r.money)}</span>`:''}</div><button ${can?'':'disabled'}>${can?'Забрати нагороду':'Ще трохи попрацювати'}</button>`;$('button',card).onclick=()=>buyReward(r.id);box.append(card)});if(!state.data.rewards.length)box.innerHTML='<div class="empty"><b>Створи перше бажання</b>Нехай у дисципліни буде приємна мета.</div>'}
+function renderShop(){const box=$('#rewardGrid');box.innerHTML='';const u=state.data.user;state.data.rewards.forEach(r=>{const can=u.stars>=r.price&&u.savedMoney>=r.money;const card=document.createElement('article');card.className=`reward-card ${r.imageData?'has-image':''}`;card.innerHTML=`${r.imageData?`<img class="reward-photo" src="${escapeHTML(r.imageData)}" alt="${escapeHTML(r.title)}">`:`<span class="reward-emoji">${escapeHTML(r.emoji)}</span>`}<h3>${escapeHTML(r.title)}</h3><div class="reward-price"><span class="gold">★ ${money(r.price)}</span>${r.money?`<span>+</span><span class="mint">$${money(r.money)}</span>`:''}</div><button ${can?'':'disabled'}>${can?'Забрати нагороду':'Ще трохи попрацювати'}</button>`;$('button',card).onclick=()=>buyReward(r.id);box.append(card)});if(!state.data.rewards.length)box.innerHTML='<div class="empty"><b>Створи перше бажання</b>Нехай у дисципліни буде приємна мета.</div>'}
 async function buyReward(id){if(!confirm('Обміняти накопичені зірки та гроші на цю нагороду?'))return;try{await request(`/api/rewards/${id}/buy`,{method:'POST'});await load();celebrate();toast('Нагорода твоя. Ти її заслужив!')}catch(err){toast(err.message,false)}}
 function renderStats(){const d=state.data.dashboard;$('#statPercent').textContent=`${d.productivity}%`;progress($('#statRing'),d.productivity,452);$('#statStreak').textContent=d.streak;$('#earnedStars').textContent=money(state.data.tasks.filter(x=>x.completed).reduce((s,x)=>s+x.stars,0));$('#statMessage').textContent=d.productivity>=80?'Сильний тиждень. Тримай цей темп.':d.productivity>=50?'Хороший ритм. Ще трохи фокусу.':'Не тисни на себе — повернися до одного кроку.';const chart=$('#weeklyChart');chart.innerHTML='';d.week.forEach((x,i)=>{const col=document.createElement('div');col.className=`bar-col ${i===6?'active':''}`;const dt=new Date(`${x.date}T12:00:00`);col.innerHTML=`<span>${x.percent}%</span><i style="--h:${Math.max(4,x.percent)}%"></i><b>${days[dt.getDay()]}</b>`;chart.append(col)})}
 function formatDate(date){const d=new Date(`${date}T12:00:00`);return `${d.getDate()} ${months[d.getMonth()]}`}
 function escapeHTML(value){const el=document.createElement('div');el.textContent=String(value??'');return el.innerHTML}
 document.addEventListener('DOMContentLoaded',()=>{
   init();
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js?v=3').catch(()=>{});}
 });

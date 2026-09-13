@@ -16,7 +16,7 @@ dialog.modal::backdrop{background:transparent}
 
 /* Mobile polish: tap safety, denser hero and premium controls */
 .hero-orb{pointer-events:none}
-.hero-text,.streak{position:relative;z-index:2}
+.hero-text{position:relative;z-index:2}.streak{z-index:2}
 .nav-icon{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .emoji-picker{gap:10px;padding:4px 2px 12px;scrollbar-width:none;scroll-snap-type:x proximity}
 .emoji-picker::-webkit-scrollbar{display:none}
@@ -44,4 +44,16 @@ dialog.modal::backdrop{background:transparent}
   .topbar h2{max-width:145px}.balance{padding:0 8px}.balances{gap:5px}
   .hero-card{min-height:264px}.hero-text h1{font-size:31px;max-width:235px}.hero-orb{width:116px;height:116px}
   .quote-card{min-height:116px}
+}
+
+.photo-field{position:relative;display:flex;align-items:center;justify-content:center;min-height:74px;margin:0 0 13px;border:1px dashed #45484f;border-radius:15px;background:linear-gradient(145deg,#1d1f23,#111214);cursor:pointer;text-align:center;transition:.2s}
+.photo-field:hover{border-color:#f1c96a99;background:#f1c96a0a}.photo-field input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.photo-field span{display:grid;gap:4px}.photo-field b{font-size:12px;color:var(--gold)}.photo-field small{font-size:9px;color:#777b82}
+.image-preview{position:relative;margin-bottom:13px}.image-preview:empty{display:none}.image-preview img{display:block;width:100%;height:150px;object-fit:cover;border-radius:15px;border:1px solid #34363b}.image-preview button{position:absolute;right:9px;top:9px;width:30px;height:30px;border:0;border-radius:50%;background:#0b0c0ed9;color:white;font-size:19px;cursor:pointer}
+.reward-photo{width:calc(100% + 48px);height:145px;object-fit:cover;margin:-24px -24px 0;border-bottom:1px solid #ffffff12}.reward-card.has-image h3{margin-top:16px}
+.money-hero>span,.money-hero h2,.money-hero p{position:relative;z-index:2}.money-hero p{max-width:52%;line-height:1.5}
+
+@media(max-width:720px){
+  .streak{position:absolute;right:20px;top:20px}
+  .reward-photo{width:calc(100% + 32px);height:118px;margin:-16px -16px 0}
+  .money-hero p{max-width:52%}
 }

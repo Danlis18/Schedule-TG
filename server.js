@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT 
 CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, emoji TEXT NOT NULL DEFAULT '☺', title TEXT NOT NULL, stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 999), category TEXT NOT NULL DEFAULT 'growth', task_date DATE NOT NULL, completed BOOLEAN NOT NULL DEFAULT FALSE, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS incomes (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, amount NUMERIC(14,2) NOT NULL CHECK (amount > 0), source TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', income_date DATE NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS rewards (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, emoji TEXT NOT NULL DEFAULT '✦', title TEXT NOT NULL, star_price INTEGER NOT NULL CHECK (star_price > 0), money_price NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (money_price >= 0), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS image_data TEXT NOT NULL DEFAULT '';
 CREATE TABLE IF NOT EXISTS purchases (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, reward_id TEXT REFERENCES rewards(id) ON DELETE SET NULL, title TEXT NOT NULL, purchased_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE INDEX IF NOT EXISTS idx_tasks_user_date ON tasks(user_id, task_date DESC);
 CREATE INDEX IF NOT EXISTS idx_incomes_user_date ON incomes(user_id, income_date DESC);
@@ -59,7 +60,7 @@ async function verifyPassword(password, stored) {
 function json(res, status, data) { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(data)); }
 async function parseBody(req) {
   let raw = '';
-  for await (const chunk of req) { raw += chunk; if (raw.length > 1_000_000) throw Object.assign(new Error('Payload too large'), { status: 413 }); }
+  for await (const chunk of req) { raw += chunk; if (raw.length > 2_500_000) throw Object.assign(new Error('Payload too large'), { status: 413 }); }
   try { return raw ? JSON.parse(raw) : {}; } catch { throw Object.assign(new Error('Некоректні дані запиту.'), { status: 400 }); }
 }
 function createSession(userId) {
@@ -138,7 +139,7 @@ async function bootstrap(user) {
   const [taskResult, incomeResult, rewardResult, purchaseResult] = await Promise.all([
     pool.query("SELECT id,emoji,title,stars,category,task_date::text AS date,completed,completed_at AS \"completedAt\" FROM tasks WHERE user_id=$1 ORDER BY task_date DESC,created_at DESC", [user.id]),
     pool.query("SELECT id,amount::float8 AS amount,source,note,income_date::text AS date FROM incomes WHERE user_id=$1 ORDER BY income_date DESC,created_at DESC", [user.id]),
-    pool.query("SELECT id,emoji,title,star_price AS price,money_price::float8 AS money FROM rewards WHERE user_id=$1 ORDER BY created_at DESC", [user.id]),
+    pool.query("SELECT id,emoji,title,star_price AS price,money_price::float8 AS money,image_data AS \"imageData\" FROM rewards WHERE user_id=$1 ORDER BY created_at DESC", [user.id]),
     pool.query("SELECT id,reward_id AS \"rewardId\",title,purchased_at::date::text AS date FROM purchases WHERE user_id=$1 ORDER BY purchased_at DESC", [user.id])
   ]);
   return { user: safeUser(user), dashboard: dashboard(taskResult.rows, incomeResult.rows), tasks: taskResult.rows, incomes: incomeResult.rows, rewards: rewardResult.rows, purchases: purchaseResult.rows };
@@ -197,9 +198,10 @@ async function api(req, res, url) {
     const updated = (await pool.query('UPDATE users SET saved_money=GREATEST(0,saved_money+$1) WHERE id=$2 RETURNING *', [value, user.id])).rows[0]; return json(res, 200, { user: safeUser(updated) });
   }
   if (req.method === 'POST' && url.pathname === '/api/rewards') {
-    const data = await parseBody(req); const price = Number(data.price); const money = asAmount(data.money || 0);
-    if (!clean(data.title, 80) || !Number.isInteger(price) || price < 1 || price > 1_000_000 || !Number.isFinite(money) || money < 0) return json(res, 400, { error: 'Перевірте назву та вартість бажання.' });
-    const reward = (await pool.query("INSERT INTO rewards (id,user_id,emoji,title,star_price,money_price) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,emoji,title,star_price AS price,money_price::float8 AS money", [id(), user.id, clean(data.emoji, 4) || '✦', clean(data.title, 80), price, money])).rows[0]; return json(res, 201, reward);
+    const data = await parseBody(req); const price = Number(data.price); const money = asAmount(data.money || 0); const imageData = String(data.imageData || '');
+    const validImage = !imageData || (/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(imageData) && imageData.length <= 2_000_000);
+    if (!clean(data.title, 80) || !Number.isInteger(price) || price < 1 || price > 1_000_000 || !Number.isFinite(money) || money < 0 || !validImage) return json(res, 400, { error: 'Перевірте назву, вартість і фото бажання.' });
+    const reward = (await pool.query("INSERT INTO rewards (id,user_id,emoji,title,star_price,money_price,image_data) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id,emoji,title,star_price AS price,money_price::float8 AS money,image_data AS \"imageData\"", [id(), user.id, clean(data.emoji, 4) || '✦', clean(data.title, 80), price, money, imageData])).rows[0]; return json(res, 201, reward);
   }
   const buy = url.pathname.match(/^\/api\/rewards\/([^/]+)\/buy$/);
   if (req.method === 'POST' && buy) {
@@ -218,7 +220,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/')) return await api(req, res, url);
     const requested = url.pathname === '/' ? 'index.html' : url.pathname.slice(1); const file = normalize(join(PUBLIC, requested));
     if (!file.startsWith(PUBLIC)) return json(res, 403, { error: 'Forbidden' });
-    await stat(file); res.writeHead(200, { 'content-type': mime[extname(file)] || 'application/octet-stream', 'cache-control': extname(file) === '.html' ? 'no-cache' : 'public, max-age=3600' }); createReadStream(file).pipe(res);
+    await stat(file); const fresh = extname(file) === '.html' || url.pathname === '/sw.js'; res.writeHead(200, { 'content-type': mime[extname(file)] || 'application/octet-stream', 'cache-control': fresh ? 'no-cache' : 'public, max-age=3600' }); createReadStream(file).pipe(res);
   } catch (error) {
     if (error?.code === 'ENOENT') { res.writeHead(404); return res.end('Not found'); }
     console.error(error); return json(res, error.status || 500, { error: error.status ? error.message : 'Тимчасова помилка. Спробуйте ще раз.' });
