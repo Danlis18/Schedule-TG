@@ -12,7 +12,9 @@ const PUBLIC = join(process.cwd(), 'public');
 const APP_SECRET = process.env.APP_SECRET || '';
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const DATABASE_URL = process.env.DATABASE_URL || '';
+const APP_URL = process.env.APP_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : '');
 const isProduction = process.env.NODE_ENV === 'production';
+const WEBHOOK_SECRET = APP_SECRET ? createHmac('sha256', APP_SECRET).update('telegram-webhook').digest('hex') : '';
 
 if (!DATABASE_URL) throw new Error('DATABASE_URL is required. Add a PostgreSQL service.');
 if (isProduction && APP_SECRET.length < 32) throw new Error('APP_SECRET must contain at least 32 characters.');
@@ -87,6 +89,34 @@ function validateTelegram(initData) {
   if (Date.now() / 1000 - Number(params.get('auth_date') || 0) > 86400) return null;
   try { return JSON.parse(params.get('user') || 'null'); } catch { return null; }
 }
+async function telegram(method, payload) {
+  const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+  const result = await response.json();
+  if (!result.ok) throw new Error(`Telegram ${method}: ${result.description || 'unknown error'}`);
+  return result.result;
+}
+async function telegramWebhook(req, res) {
+  const received = String(req.headers['x-telegram-bot-api-secret-token'] || '');
+  if (!WEBHOOK_SECRET || received.length !== WEBHOOK_SECRET.length || !timingSafeEqual(Buffer.from(received), Buffer.from(WEBHOOK_SECRET))) return json(res, 403, { ok: false });
+  const update = await parseBody(req);
+  const message = update.message;
+  if (message?.chat?.id && /^\/start(?:@\w+)?(?:\s|$)/i.test(message.text || '')) {
+    await telegram('sendMessage', {
+      chat_id: message.chat.id,
+      text: `Привіт, ${clean(message.from?.first_name, 40) || 'гравцю'}! ✦\n\nLevelUp Life перетворює твої щоденні справи на квести, зірки, прогрес і реальні нагороди. Натискай кнопку та починай свій день.`,
+      reply_markup: { inline_keyboard: [[{ text: '🚀 Відкрити LevelUp Life', web_app: { url: APP_URL } }]] }
+    });
+  }
+  return json(res, 200, { ok: true });
+}
+async function configureTelegram() {
+  if (!BOT_TOKEN || !APP_URL || !WEBHOOK_SECRET) { console.warn('Telegram webhook skipped: BOT_TOKEN, APP_URL or APP_SECRET is missing.'); return; }
+  const webhookUrl = `${APP_URL.replace(/\/$/, '')}/api/telegram/webhook`;
+  await telegram('setWebhook', { url: webhookUrl, secret_token: WEBHOOK_SECRET, allowed_updates: ['message'] });
+  await telegram('setMyCommands', { commands: [{ command: 'start', description: 'Відкрити LevelUp Life' }] });
+  await telegram('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Відкрити LevelUp', web_app: { url: APP_URL } } });
+  console.log(`Telegram webhook configured: ${webhookUrl}`);
+}
 
 const attempts = new Map();
 function authAllowed(req) {
@@ -116,6 +146,7 @@ async function bootstrap(user) {
 
 async function api(req, res, url) {
   if (req.method === 'GET' && url.pathname === '/api/health') { await pool.query('SELECT 1'); return json(res, 200, { ok: true }); }
+  if (req.method === 'POST' && url.pathname === '/api/telegram/webhook') return telegramWebhook(req, res);
   if (url.pathname.startsWith('/api/auth/') && !authAllowed(req)) return json(res, 429, { error: 'Забагато спроб. Спробуйте через 15 хвилин.' });
   if (req.method === 'POST' && url.pathname === '/api/auth/register') {
     const data = await parseBody(req); const username = clean(data.username, 32).toLowerCase(); const password = String(data.password || '');
@@ -193,5 +224,5 @@ const server = http.createServer(async (req, res) => {
     console.error(error); return json(res, error.status || 500, { error: error.status ? error.message : 'Тимчасова помилка. Спробуйте ще раз.' });
   }
 });
-server.listen(PORT, () => console.log(`LevelUp Life running on port ${PORT}`));
+server.listen(PORT, () => { console.log(`LevelUp Life running on port ${PORT}`); configureTelegram().catch(error => console.error(error.message)); });
 process.on('SIGTERM', async () => { server.close(); await pool.end(); process.exit(0); });
