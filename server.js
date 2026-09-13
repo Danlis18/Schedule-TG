@@ -210,7 +210,7 @@ async function api(req, res, url) {
   return json(res, 404, { error: 'Маршрут не знайдено.' });
 }
 
-const mime = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png', '.webp':'image/webp', '.ico':'image/x-icon' };
+const mime = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.webmanifest':'application/manifest+json; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png', '.webp':'image/webp', '.ico':'image/x-icon' };
 const server = http.createServer(async (req, res) => {
   res.setHeader('x-content-type-options', 'nosniff'); res.setHeader('x-frame-options', 'SAMEORIGIN'); res.setHeader('referrer-policy', 'strict-origin-when-cross-origin'); res.setHeader('permissions-policy', 'camera=(), microphone=(), geolocation=()');
   try {
