@@ -57,3 +57,7 @@ dialog.modal::backdrop{background:transparent}
   .reward-photo{width:calc(100% + 32px);height:118px;margin:-16px -16px 0}
   .money-hero p{max-width:52%}
 }
+
+.routine-toggle{display:flex;align-items:center;gap:12px;margin:2px 0 18px;padding:13px 14px;border:1px solid #303238;border-radius:14px;background:#101113;cursor:pointer}.routine-toggle>input{position:absolute;opacity:0;pointer-events:none}.toggle-track{flex:0 0 42px;width:42px;height:24px;padding:3px;border-radius:99px;background:#33363b;transition:.2s}.toggle-track i{display:block;width:18px;height:18px;border-radius:50%;background:#8b8e94;transition:.2s}.routine-toggle>input:checked+.toggle-track{background:#f1c96a}.routine-toggle>input:checked+.toggle-track i{transform:translateX(18px);background:#17140d}.routine-copy{display:grid;gap:3px}.routine-copy b{font-size:11px}.routine-copy small{font-size:9px;color:#777b82}.routine-toggle:has(input:checked){border-color:#f1c96a66;background:#f1c96a09}
+.routine-chip{display:inline-flex;margin-left:7px;padding:2px 5px;border-radius:5px;background:#7fe0bd12;color:var(--mint);font-size:7px;font-weight:800;letter-spacing:.08em;vertical-align:1px}
+.task-row.expired{opacity:.48;background:#171719}.task-row.expired .task-check{color:#ff7d72;background:#ff7d7210;border-color:#ff7d7244;cursor:not-allowed}.task-row.expired .task-title{color:#8a8c91}.task-row.expired .star-chip{filter:grayscale(1);opacity:.5}

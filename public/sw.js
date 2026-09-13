@@ -1,5 +1,5 @@
-const CACHE = 'levelup-life-v3';
-const STATIC = ['/', '/styles.css', '/app.js', '/favicon.svg', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'levelup-life-v4';
+const STATIC = ['/', '/styles.css?v=4', '/app.js?v=4', '/favicon.svg', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(STATIC)));

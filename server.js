@@ -33,6 +33,8 @@ const quotes = [
 await pool.query(`
 CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL DEFAULT '', name TEXT NOT NULL, stars INTEGER NOT NULL DEFAULT 0 CHECK (stars >= 0), saved_money NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (saved_money >= 0), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, emoji TEXT NOT NULL DEFAULT '☺', title TEXT NOT NULL, stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 999), category TEXT NOT NULL DEFAULT 'growth', task_date DATE NOT NULL, completed BOOLEAN NOT NULL DEFAULT FALSE, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_routine BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS routine_series_id TEXT;
 CREATE TABLE IF NOT EXISTS incomes (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, amount NUMERIC(14,2) NOT NULL CHECK (amount > 0), source TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', income_date DATE NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS rewards (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, emoji TEXT NOT NULL DEFAULT '✦', title TEXT NOT NULL, star_price INTEGER NOT NULL CHECK (star_price > 0), money_price NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (money_price >= 0), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 ALTER TABLE rewards ADD COLUMN IF NOT EXISTS image_data TEXT NOT NULL DEFAULT '';
@@ -137,7 +139,7 @@ function dashboard(tasks, incomes) {
 }
 async function bootstrap(user) {
   const [taskResult, incomeResult, rewardResult, purchaseResult] = await Promise.all([
-    pool.query("SELECT id,emoji,title,stars,category,task_date::text AS date,completed,completed_at AS \"completedAt\" FROM tasks WHERE user_id=$1 ORDER BY task_date DESC,created_at DESC", [user.id]),
+    pool.query("SELECT id,emoji,title,stars,category,task_date::text AS date,completed,completed_at AS \"completedAt\",is_routine AS \"isRoutine\",routine_series_id AS \"routineSeriesId\" FROM tasks WHERE user_id=$1 ORDER BY task_date DESC,created_at DESC", [user.id]),
     pool.query("SELECT id,amount::float8 AS amount,source,note,income_date::text AS date FROM incomes WHERE user_id=$1 ORDER BY income_date DESC,created_at DESC", [user.id]),
     pool.query("SELECT id,emoji,title,star_price AS price,money_price::float8 AS money,image_data AS \"imageData\" FROM rewards WHERE user_id=$1 ORDER BY created_at DESC", [user.id]),
     pool.query("SELECT id,reward_id AS \"rewardId\",title,purchased_at::date::text AS date FROM purchases WHERE user_id=$1 ORDER BY purchased_at DESC", [user.id])
@@ -169,15 +171,24 @@ async function api(req, res, url) {
   const user = await requireUser(req); if (!user) return json(res, 401, { error: 'Потрібно увійти.' });
   if (req.method === 'GET' && url.pathname === '/api/bootstrap') return json(res, 200, await bootstrap(user));
   if (req.method === 'POST' && url.pathname === '/api/tasks') {
-    const data = await parseBody(req); const stars = Number(data.stars);
-    if (!clean(data.title, 90) || !Number.isInteger(stars) || stars < 1 || stars > 999 || !validDate(data.date)) return json(res, 400, { error: 'Перевірте назву, дату й нагороду.' });
-    const task = (await pool.query("INSERT INTO tasks (id,user_id,emoji,title,stars,category,task_date) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id,emoji,title,stars,category,task_date::text AS date,completed", [id(), user.id, clean(data.emoji, 4) || '☺', clean(data.title, 90), stars, ['growth','health','work','balance'].includes(data.category) ? data.category : 'growth', data.date])).rows[0];
-    return json(res, 201, task);
+    const data = await parseBody(req); const stars = Number(data.stars); const repeatDaily = data.repeatDaily === 'on' || data.repeatDaily === true || data.repeatDaily === 'true';
+    if (!clean(data.title, 90) || !Number.isInteger(stars) || stars < 1 || stars > 999 || !validDate(data.date) || (repeatDaily && data.date < today())) return json(res, 400, { error: 'Перевірте назву, дату й нагороду.' });
+    const values = [user.id, clean(data.emoji, 4) || '🎯', clean(data.title, 90), stars, ['growth','health','work','balance'].includes(data.category) ? data.category : 'growth', data.date];
+    if (repeatDaily) {
+      const seriesId = id();
+      const result = await pool.query(`WITH dates AS (SELECT generate_series($6::date,make_date(EXTRACT(YEAR FROM $6::date)::int,12,31),INTERVAL '1 day')::date AS day)
+        INSERT INTO tasks (id,user_id,emoji,title,stars,category,task_date,is_routine,routine_series_id)
+        SELECT $7||'-'||to_char(day,'YYYYMMDD'),$1,$2,$3,$4,$5,day,TRUE,$7 FROM dates
+        RETURNING id,emoji,title,stars,category,task_date::text AS date,completed,is_routine AS "isRoutine",routine_series_id AS "routineSeriesId"`, [...values, seriesId]);
+      return json(res, 201, { ...result.rows[0], createdCount: result.rowCount });
+    }
+    const task = (await pool.query("INSERT INTO tasks (id,user_id,emoji,title,stars,category,task_date,is_routine) VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE) RETURNING id,emoji,title,stars,category,task_date::text AS date,completed,is_routine AS \"isRoutine\"", [id(), ...values])).rows[0];
+    return json(res, 201, { ...task, createdCount: 1 });
   }
   const toggle = url.pathname.match(/^\/api\/tasks\/([^/]+)\/toggle$/);
   if (req.method === 'PATCH' && toggle) {
     const client = await pool.connect();
-    try { await client.query('BEGIN'); const task = (await client.query('SELECT * FROM tasks WHERE id=$1 AND user_id=$2 FOR UPDATE', [toggle[1], user.id])).rows[0]; if (!task) { await client.query('ROLLBACK'); return json(res, 404, { error: 'Завдання не знайдено.' }); } const completed = !task.completed; const updated = (await client.query("UPDATE tasks SET completed=$1,completed_at=CASE WHEN $1 THEN NOW() ELSE NULL END WHERE id=$2 RETURNING id,emoji,title,stars,category,task_date::text AS date,completed", [completed, task.id])).rows[0]; await client.query('UPDATE users SET stars=GREATEST(0,stars+$1) WHERE id=$2', [completed ? task.stars : -task.stars, user.id]); await client.query('COMMIT'); return json(res, 200, { task: updated }); }
+    try { await client.query('BEGIN'); const task = (await client.query('SELECT * FROM tasks WHERE id=$1 AND user_id=$2 FOR UPDATE', [toggle[1], user.id])).rows[0]; if (!task) { await client.query('ROLLBACK'); return json(res, 404, { error: 'Завдання не знайдено.' }); } if (String(task.task_date).slice(0,10) < today()) { await client.query('ROLLBACK'); return json(res, 400, { error: 'Цей день уже завершено — завдання неактивне.' }); } const completed = !task.completed; const updated = (await client.query("UPDATE tasks SET completed=$1,completed_at=CASE WHEN $1 THEN NOW() ELSE NULL END WHERE id=$2 RETURNING id,emoji,title,stars,category,task_date::text AS date,completed,is_routine AS \"isRoutine\"", [completed, task.id])).rows[0]; await client.query('UPDATE users SET stars=GREATEST(0,stars+$1) WHERE id=$2', [completed ? task.stars : -task.stars, user.id]); await client.query('COMMIT'); return json(res, 200, { task: updated }); }
     catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
   }
   const removeTask = url.pathname.match(/^\/api\/tasks\/([^/]+)$/);
